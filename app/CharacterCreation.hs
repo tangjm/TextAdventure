@@ -1,9 +1,24 @@
 module CharacterCreation where 
 
+data Race = 
+      Elf
+    | Dwarf
+    | Orc
+    deriving (Eq, Show)
+
+data Class = 
+      Archer
+    | Mage 
+    | Warrior
+    deriving (Eq, Show)
+
 data Player =
   Player { getPlayerName :: String,
-           getPlayerHP :: Int
+           getPlayerHP :: Int,
+           getPlayerRace :: Race,
+           getPlayerClass :: Class
            }
+  deriving Show
 
 getName :: IO (Maybe String)
 getName = do 
@@ -12,5 +27,5 @@ getName = do
     "" -> return Nothing
     xs -> return $ Just xs
 
-player :: String -> Player 
-player name = Player name 10 
+life :: Int 
+life = 10

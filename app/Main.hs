@@ -11,30 +11,77 @@ data GameState =
 data Monster = 
   Monster { getMonsterName :: String, getMonsterHP :: Int }
 
-gameState :: Player -> GameState
-gameState = flip GameState (Monster "Orc" 10) 
+gameFor :: Player -> GameState
+gameFor = flip GameState (Monster "Orc" 10) 
 
 start :: IO ()
 start = do 
-  game <- createCharacter gameState 
-  beginEncounter game
+  player <- createCharacter
+  let game = gameFor player in 
+    beginEncounter game
 
 
--- Character creation
-createCharacter :: (Player -> GameState) -> IO GameState
-createCharacter gameState = do 
-  putStrLn "Welcome to the text adventure!"
-  putStrLn "What is your name, adventurer?" 
+pickName :: IO String
+pickName = do 
   name <- getName 
   case name of 
     Just name' -> do
       putStrLn "What a fitting name for an adventurer!"
       putStrLn ""
-      return $ gameState (player name')
+      return name'
     Nothing -> do
       putStrLn "Please enter a valid name"
       putStrLn ""
-      createCharacter gameState
+      pickName
+
+pickClass :: IO Class 
+pickClass = do
+  class' <- getLine 
+  case class' of 
+    "warrior" -> do
+      putStrLn "Congratulations on becoming a warrior"
+      putStrLn "" 
+      return Warrior 
+    "archer" -> do 
+      putStrLn "Congrats on becoming an archer"
+      putStrLn ""
+      return Archer
+    "mage" -> do 
+      putStrLn "Congrats on becoming a mage"
+      putStrLn ""
+      return Mage
+
+pickRace :: IO Race 
+pickRace = do 
+  race <- getLine
+  case race of
+    "elf" -> do
+      putStrLn "A wise choice!"
+      putStrLn ""
+      return Elf 
+    "dwarf" -> do
+      putStrLn "A solid choice!"
+      putStrLn ""
+      return Dwarf 
+    "orc" -> do 
+      putStrLn "A respectable choice!"
+      putStrLn ""
+      return Orc 
+
+-- Character creation
+createCharacter :: IO Player
+createCharacter = do 
+  putStrLn "Welcome to the text adventure!"
+  putStrLn "What is your name, adventurer?" 
+  name <- pickName
+
+  putStrLn "Select your race: <Elf>, <Dwarf>, <Orc>"
+  race <- pickRace
+
+  putStrLn "Select a class: <Warrior>, <Archer>, <Mage>"
+  class' <- pickClass 
+
+  return $ Player name life race class'
 
 
 -- Core encounter
@@ -57,14 +104,19 @@ beginEncounter gameState = do
       beginEncounter gameState 
 
 showPlayerHP :: GameState -> IO ()
-showPlayerHP gameState = 
+showPlayerHP (GameState player _) = 
   putStr $ 
     "[" ++ "HP" ++ " " ++ 
-    show (getPlayerHP $ getPlayer gameState) 
+    show (getPlayerHP player) 
     ++ "/10" ++ "]" ++ ">" ++ " "
 
 
 damageCalculation :: GameState -> IO GameState 
 damageCalculation (GameState player monster) = 
   return $ GameState 
-    (Player (getPlayerName player) (getPlayerHP player - 1)) (Monster (getMonsterName monster) (getMonsterHP monster - 1))
+    (Player (getPlayerName player) 
+            (getPlayerHP player - 1) 
+            (getPlayerRace player)
+            (getPlayerClass player))
+    (Monster (getMonsterName monster) 
+             (getMonsterHP monster - 1))
