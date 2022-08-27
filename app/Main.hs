@@ -1,72 +1,32 @@
 module Main where
 
+import Data.Char (toLower)
+import System.Random 
 import CharacterCreation 
 
 main :: IO ()
 main = putStrLn "Hello, Haskell!"
 
 data GameState = 
-  GameState { getPlayer :: Player, getMonster :: Monster }
+  GameState { getPlayer :: Player, 
+              getMonster :: Monster,
+              getRandNum :: StdGen }
 
 data Monster = 
-  Monster { getMonsterName :: String, getMonsterHP :: Int }
+  Monster { getMonsterName :: String,
+            getMonsterHP :: Int }
 
-gameFor :: Player -> GameState
+type Being = String 
+
+gameFor :: Player -> StdGen -> GameState
 gameFor = flip GameState (Monster "Orc" 10) 
 
 start :: IO ()
 start = do 
   player <- createCharacter
-  let game = gameFor player in 
+  let game = gameFor player stdNumGen in 
     beginEncounter game
 
-
-pickName :: IO String
-pickName = do 
-  name <- getName 
-  case name of 
-    Just name' -> do
-      putStrLn "What a fitting name for an adventurer!"
-      putStrLn ""
-      return name'
-    Nothing -> do
-      putStrLn "Please enter a valid name"
-      putStrLn ""
-      pickName
-
-pickClass :: IO Class 
-pickClass = do
-  class' <- getLine 
-  case class' of 
-    "warrior" -> do
-      putStrLn "Congratulations on becoming a warrior"
-      putStrLn "" 
-      return Warrior 
-    "archer" -> do 
-      putStrLn "Congrats on becoming an archer"
-      putStrLn ""
-      return Archer
-    "mage" -> do 
-      putStrLn "Congrats on becoming a mage"
-      putStrLn ""
-      return Mage
-
-pickRace :: IO Race 
-pickRace = do 
-  race <- getLine
-  case race of
-    "elf" -> do
-      putStrLn "A wise choice!"
-      putStrLn ""
-      return Elf 
-    "dwarf" -> do
-      putStrLn "A solid choice!"
-      putStrLn ""
-      return Dwarf 
-    "orc" -> do 
-      putStrLn "A respectable choice!"
-      putStrLn ""
-      return Orc 
 
 -- Character creation
 createCharacter :: IO Player
@@ -93,8 +53,6 @@ beginEncounter gameState = do
   userChoice <- getLine
   case userChoice of 
     "attack" -> do 
-      putStrLn "You hit the orc for 1 damage!"
-      putStrLn "The orc hits you for 1 damage!" 
       newGameState <- damageCalculation gameState  
       putStrLn ""
       beginEncounter newGameState
@@ -104,7 +62,7 @@ beginEncounter gameState = do
       beginEncounter gameState 
 
 showPlayerHP :: GameState -> IO ()
-showPlayerHP (GameState player _) = 
+showPlayerHP (GameState player _ _) = 
   putStr $ 
     "[" ++ "HP" ++ " " ++ 
     show (getPlayerHP player) 
@@ -112,11 +70,41 @@ showPlayerHP (GameState player _) =
 
 
 damageCalculation :: GameState -> IO GameState 
-damageCalculation (GameState player monster) = 
-  return $ GameState 
-    (Player (getPlayerName player) 
-            (getPlayerHP player - 1) 
-            (getPlayerRace player)
-            (getPlayerClass player))
-    (Monster (getMonsterName monster) 
-             (getMonsterHP monster - 1))
+damageCalculation (GameState player monster randNum) = do 
+  let monsterDamage = getDamageFor (getMonsterName monster) randNum 
+  let playerDamage = getDamageFor "player" randNum 
+  case monsterDamage of 
+    (Right (monsterDamage', _)) ->   
+      case playerDamage of 
+        (Right (playerDamage', newRandNum)) -> do
+            putStrLn $ "You hit the orc for " ++ show playerDamage' ++ " damage!"
+            putStrLn $ "The orc hits you for " ++ show monsterDamage' ++ " damage!" 
+            return $ GameState 
+              (Player (getPlayerName player) 
+                      (getPlayerHP player - monsterDamage') 
+                      (getPlayerRace player)
+                      (getPlayerClass player))
+              (Monster (getMonsterName monster) 
+                      (getMonsterHP monster - playerDamage'))
+              newRandNum
+        (Left _) -> do 
+          putStrLn "Player doesn't exist"
+          return $ GameState player monster randNum
+    (Left _) -> do 
+      putStrLn "Monster doesn't exist" 
+      return $ GameState player monster randNum 
+    
+
+stdNumGen :: StdGen 
+stdNumGen = mkStdGen 5
+
+randomNumInRange :: (Int, Int) -> StdGen -> (Int, StdGen) 
+randomNumInRange (min,max) numGen = randomR (min, max) numGen 
+
+getDamageFor :: Being -> StdGen -> Either String (Int, StdGen)
+getDamageFor being numGen = do 
+  let being' = map toLower being
+  case being' of 
+    "orc" -> return $ randomNumInRange (0, 10) numGen
+    "player" -> return $ randomNumInRange (0, 2) numGen
+    _ -> Left "Non-existent being"
